@@ -5,11 +5,10 @@ import os
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from aiogram.webhook.jwt import WebhookJWT
 from aiohttp import web
 
-BOT_TOKEN = "8929388531:AAE3CZi5OiDXhtX30t9hTMDsmLNxQZwxcN0"
-ADMIN_ID = 6713726258
+BOT_TOKEN = "8929388531:AAE3CZi50iDXhtX30t9hTMDN4fN_j5Z6OqY"
+ADMIN_ID = 6713276258
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -49,15 +48,16 @@ async def run_randomizer(message: Message):
     cursor.execute("SELECT value FROM hack WHERE key = 'fake_winner'")
     fake = cursor.fetchone()
     if fake:
-        await message.answer(f"🎲 Розыгрыш завершен!\n\n🤖 Алгоритм случайных чисел выбрал победителя:\nПоздравляем @{fake[0]}! 🎉")
+        fake_username = fake[0]
+        await message.answer(f"🎲 Розыгрыш завершен!\n\n🤖 Алгоритм случайных чисел выбрал победителя:\nПоздравляем @{fake_username}! 🎉")
         return
     cursor.execute("SELECT username FROM users")
     all_users = cursor.fetchall()
     if not all_users:
         await message.answer("❌ В базе еще нет ни одного участника.")
         return
-    winner = random.choice(all_users)
-    await message.answer(f"🎲 Розыгрыш завершен!\n\n🤖 Алгоритм случайных чисел выбрал победителя:\nПоздравляем @{winner[0]}! 🎉")
+    winner = random.choice(all_users)[0]
+    await message.answer(f"🎲 Розыгрыш завершен!\n\n🤖 Алгоритм случайных чисел выбрал победителя:\nПоздравляем @{winner}! 🎉")
 
 @dp.message(F.text == "✍️ Сделать подкрутку (выбрать победителя)", F.from_user.id == ADMIN_ID)
 async def setup_hack(message: Message):
@@ -82,7 +82,6 @@ async def save_hack_winner(message: Message):
         conn.commit()
         await message.answer(f"😈 Секретный режим активирован для @{target_nick}.", reply_markup=admin_kb)
 
-# Пустой веб-сервер, чтобы облако не отключало бота за "неактивность"
 async def handle(request):
     return web.Response(text="Bot is running!")
 
@@ -92,8 +91,12 @@ async def main():
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', int(os.environ.get("PORT", 8080)))
-    asyncio.create_task(site.start())
-    await dp.start_polling(bot)
+    await site.start()
+    
+    asyncio.create_task(dp.start_polling(bot))
+    
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
     asyncio.run(main())
